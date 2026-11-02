@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Astra Incognita</title>
+  <meta name="description" content="El cielo de verdad desde la cumbre de La Palma, en puntos: las 8.874 estrellas que se ven a simple vista, la Vía Láctea, las 88 constelaciones y diez secretos escondidos.">
+  <meta name="author" content="Pau Morató Sebastià">
+  <meta name="theme-color" content="#09090a">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Astra Incognita">
+  <meta property="og:description" content="Per aspera ad astra. El cielo de La Palma, estrella a estrella, y diez secretos escondidos entre las constelaciones. Mira, acércate… y encuéntralos.">
+  <meta property="og:url" content="https://explore-astra-incognita.github.io/">
+  <meta property="og:image" content="https://explore-astra-incognita.github.io/compartir.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="css/estilos.css?v=20261102c">
+</head>
+<body>
+  <canvas id="lienzo" aria-label="El cielo nocturno desde la cumbre de La Palma: las estrellas, la Vía Láctea y las constelaciones. Arrastra para mirar a otro lado y usa la rueda para acercarte."></canvas>
+  <div class="grano" aria-hidden="true"></div>
+  <div class="esquinas" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+  <div class="cargando" id="cargando" aria-live="polite"><span class="cargando-tinta" aria-hidden="true"></span><span>Abriendo la cúpula…</span></div>
+
+  <header class="marca">
+    <h1 class="titulo">Astra <em><span class="pre">in</span>cognita</em></h1>
+    <p class="sub">Per aspera ad astra · El cielo</p>
+  </header>
+
+  <button class="b-cuaderno" id="b-cuaderno" type="button" aria-expanded="false" aria-controls="cuaderno">
+    <span class="b-fila"><span class="b-etq">Cuaderno · Secretos</span><span class="b-cont" id="contador">00/10</span></span>
+    <span class="segmentos" id="segmentos" aria-hidden="true"></span>
+  </button>
+
+  <button class="b-sonido" id="b-sonido" type="button" aria-pressed="false" aria-label="Sonido" title="Sonido">♪</button>
+
+  <div class="hud hud-izq" id="hud" aria-hidden="true">
+    <div><span>Constelación</span><b id="h-cons">—</b></div>
+    <div><span>Coordenadas</span><b id="h-coord">05 H 35 M · −05° 23′</b></div>
+    <div class="h-mira"><span>Mirando</span><b id="h-mira">S · 34°</b></div>
+    <div><span>Señal</span><b class="barras" id="h-senal"><i></i><i></i><i></i><i></i><i></i></b></div>
+  </div>
+  <div class="hud hud-der"><span id="ayuda">Arrastra para mirar · rueda para acercar</span></div>
+  <div class="teclas" id="teclas" aria-hidden="true"></div>
+
+  <aside class="cuaderno" id="cuaderno" aria-hidden="true" aria-labelledby="cuaderno-titulo">
+    <div class="c-cabeza">
+      <div>
+        <p class="c-etq">Cuaderno de observación</p>
+        <h2 id="cuaderno-titulo">Los secretos del cielo</h2>
+      </div>
+      <button class="c-cerrar" id="cerrar-cuaderno" type="button" aria-label="Cerrar el cuaderno">✕</button>
+    </div>
+    <p class="c-intro">Diez secretos entre las estrellas. Unos se ven con la lupa; otros se dibujan, se escriben… o se esperan mientras gira el cielo.</p>
+    <ol class="lista" id="lista"></ol>
+    <p class="c-fuentes">Estrellas: Hipparcos y Yale Bright Star Catalogue, vía d3-celestial (Olaf Frohn, BSD). Todo dibujado por código. Tipografías: Instrument Serif e IBM Plex Mono (OFL).</p>
+    <p class="c-credito" id="c-credito-linea" hidden>Un juego de <a id="c-credito" target="_blank" rel="noopener"><b id="c-credito-nombre"></b><span class="flecha"> ↗</span></a></p>
+    <div class="c-pie">
+      <button type="button" id="ver-final" class="c-boton" hidden>Volver a ver el final</button>
+      <button type="button" id="borrar" class="c-boton c-boton-tenue">Borrar progreso</button>
+    </div>
+  </aside>
+
+  <section class="tarjeta" id="tarjeta" aria-live="polite">
+    <div class="t-etq" id="t-etq"></div>
+    <h2 class="t-tit" id="t-tit"></h2>
+    <p class="t-txt" id="t-txt"></p>
+    <div class="t-pie" id="t-pie"></div>
+  </section>
+
+  <div class="aviso" id="aviso" role="status"></div>
+  <button class="saltar" id="saltar" type="button">Saltar <kbd>⌫</kbd></button>
+
+  <div class="intro" id="intro" hidden>
+    <div class="intro-caja">
+      <canvas class="intro-medalla" id="intro-medalla" aria-hidden="true"></canvas>
+      <h2>Astra <em>incognita</em></h2>
+      <p class="intro-sub">Per aspera ad astra · El cielo</p>
+      <p>En la cumbre de La Palma, a casi 2.400 metros y por encima del mar de nubes, hay uno de los cielos más oscuros del mundo: una ley lo protege de la luz desde 1988. Esta noche están las 8.874 estrellas que se ven a simple vista, la Vía Láctea y diez secretos. Mira, acércate con la lupa… o espera a que gire el cielo. Lo que encuentres quedará en tu cuaderno.</p>
+      <button type="button" id="empezar">Mirar arriba</button>
+    </div>
+  </div>
+
+  <div class="creditos" id="creditos" hidden role="dialog" aria-modal="true" aria-labelledby="creditos-nombre">
+    <div class="creditos-caja">
+      <p class="creditos-etq">El cielo, cartografiado por</p>
+      <h2 class="creditos-nombre" id="creditos-nombre"></h2>
+      <div class="creditos-linea" aria-hidden="true"></div>
+      <p class="creditos-txt">Gracias por mirar arriba hasta el final.</p>
+      <div class="creditos-botones">
+        <a class="creditos-enlace" id="creditos-enlace" target="_blank" rel="noopener">Ver su LinkedIn <span aria-hidden="true">↗</span></a>
+        <button type="button" class="creditos-cerrar" id="creditos-cerrar">Seguir explorando</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="datos/cielo.js?v=20261102c"></script>
+  <script src="js/motor.js?v=20261102c"></script>
+  <script src="js/cielo.js?v=20261102c"></script>
+  <script src="js/interfaz.js?v=20261102c"></script>
+  <script src="js/escenas.js?v=20261102c"></script>
+  <script src="js/huevos/01-wow.js?v=20261102c"></script>
+  <script src="js/huevos/02-betelgeuse.js?v=20261102c"></script>
+  <script src="js/huevos/03-estrella-invitada.js?v=20261102c"></script>
+  <script src="js/huevos/04-polar.js?v=20261102c"></script>
+  <script src="js/huevos/05-carro.js?v=20261102c"></script>
+  <script src="js/huevos/06-pleyades.js?v=20261102c"></script>
+  <script src="js/huevos/07-andromeda.js?v=20261102c"></script>
+  <script src="js/huevos/08-voyager.js?v=20261102c"></script>
+  <script src="js/huevos/09-deseo.js?v=20261102c"></script>
+  <script src="js/huevos/10-alfa-centauri.js?v=20261102c"></script>
+  <script src="js/huevos/escondido-gtc.js?v=20261102c"></script>
+  <script src="js/huevos/final.js?v=20261102c"></script>
+  <script src="js/sonido.js?v=20261102c"></script>
+  <script src="js/inicio.js?v=20261102c"></script>
+</body>
+</html>
