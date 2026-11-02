@@ -232,7 +232,7 @@
       if (lupaVis) lupa(ctx, lineas, enLupa);
       fugazYSatelite(ctx);
     }
-    if (!(s && s.sinSuelo)) suelo(ctx);
+    if (!(s && s.sinSuelo)) (CI.sueloAlt || suelo)(ctx);
     if (CI.velo > 0.003) { ctx.fillStyle = 'rgba(9,9,10,' + CI.velo.toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     ctx.setLineDash([]); ctx.lineCap = 'butt';
@@ -368,27 +368,39 @@
     p.moveTo(a[0], abajo); pts.forEach(function (q) { p.lineTo(q[0], q[1]); }); p.lineTo(b[0], abajo); p.closePath();
     return p;
   }
+  // el suelo en curvas de nivel, como un atlas topográfico (Pau eligió la A del laboratorio, 02/11): la tierra en tinta,
+  // con curvas de puntos que bajan siguiendo el relieve (una de cada cuatro, maestra), y el mar de nubes en corrientes
+  function trazo(pts) { var p = new Path2D(); pts.forEach(function (q, j) { if (j) p.lineTo(q[0], q[1]); else p.moveTo(q[0], q[1]); }); return p; }
+  function punteado(ctx, path, col, ancho, hueco) { ctx.lineCap = 'round'; ctx.setLineDash([0.01, hueco]); ctx.lineWidth = ancho; ctx.strokeStyle = col; ctx.stroke(path); ctx.setLineDash([]); }
+  // ondulación suave que cierra la vuelta (múltiplos enteros del rumbo)
+  function ondas(az, k) { var a = az * RAD; return 0.5 * Math.sin(a * 3 + k * 1.3) + 0.3 * Math.sin(a * 7 + k * 2.9) + 0.18 * Math.sin(a * 13 + k * 0.7); }
   function suelo(ctx) {
-    var desde = E.az - 130, hasta = E.az + 130, ppd = E.pxGrado(), ox = -E.az * ppd, oy = E.alt * ppd, tt = E.t;
+    var desde = E.az - 130, hasta = E.az + 130, tt = E.t, j, k;
     // el Teide, asomando sobre el mar de nubes (rumbo 114°, a 132 km)
     var tq = E.proyHor(114, 0, -0.5);
     if (tq) silueta(ctx, 114, NUBES - 0.6, function (c) { c.moveTo(-8, 0); c.bezierCurveTo(-6, 0.4, -4.6, 1.0, -3.6, 1.45); c.bezierCurveTo(-3.0, 1.75, -2.4, 1.7, -1.9, 1.85); c.bezierCurveTo(-1.2, 2.3, -0.7, 2.75, -0.35, 3.05); c.lineTo(0.35, 3.1); c.bezierCurveTo(1.0, 2.6, 2.4, 1.4, 4.2, 0.75); c.bezierCurveTo(5.6, 0.3, 7, 0.1, 9, 0); c.closePath(); }, 1.05);
-    // el mar de nubes: su techo ondula despacio
-    var nubes = contorno(function (az) { return NUBES + 0.18 * Math.sin(az * 0.21 + tt / 5200) + 0.1 * Math.sin(az * 0.63 - tt / 3100); }, desde, hasta, 1.5);
-    var pn = cerrar(nubes);
+    // el mar de nubes: su techo ondula despacio, y por dentro fluyen corrientes de puntos
+    var techo = function (az) { return NUBES + 0.18 * Math.sin(az * 0.21 + tt / 5200) + 0.1 * Math.sin(az * 0.63 - tt / 3100); };
+    var nubes = contorno(techo, desde, hasta, 1.5), pn = cerrar(nubes);
     ctx.fillStyle = TINTA; ctx.fill(pn);
-    moverTrama(tramaNube, ox + tt / 900, oy); ctx.fillStyle = tramaNube; ctx.fill(pn);
-    ctx.lineCap = 'round'; ctx.setLineDash([0.01, 2.6]); ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(214,226,240,.5)'; var fn = new Path2D(); nubes.forEach(function (q, j) { if (j) fn.lineTo(q[0], q[1]); else fn.moveTo(q[0], q[1]); }); ctx.stroke(fn); ctx.setLineDash([]);
-    if (nubes.length) { var yn = nubes[Math.floor(nubes.length / 2)][1], gn = ctx.createLinearGradient(0, yn - 4, 0, yn + ppd * 6); gn.addColorStop(0, 'rgba(9,9,10,0)'); gn.addColorStop(1, 'rgba(9,9,10,.82)'); ctx.fillStyle = gn; ctx.fill(pn); }
-    // la cumbre: tierra en puntos, más callada arriba y más clara abajo
+    ctx.save(); ctx.clip(pn);
+    for (j = 0; j < 7; j++) {
+      var cj = contorno(function (az) { return techo(az) - 0.22 - 0.2 * Math.pow(j, 1.55) + 0.09 * Math.sin(az * RAD * 9 + tt / (2600 + j * 500) + j); }, desde, hasta, 1.5);
+      punteado(ctx, trazo(cj), 'rgba(214,226,240,' + (0.36 - j * 0.04).toFixed(3) + ')', 1.25, 2.4 + j * 0.6);
+    }
+    ctx.restore();
+    punteado(ctx, trazo(nubes), 'rgba(214,226,240,.6)', 1.4, 2.4);
+    // la cumbre: tinta, y las curvas de nivel que bajan y se van allanando
     var cima = contorno(perfil, desde, hasta, 1), pc = cerrar(cima);
     ctx.fillStyle = TINTA; ctx.fill(pc);
-    moverTrama(tramaSuelo, ox, oy); ctx.fillStyle = tramaSuelo; ctx.fill(pc);
-    var yc = E.proyHor(E.az, perfil(E.az), -0.92);
-    if (yc) { var g = ctx.createLinearGradient(0, yc[1] - ppd * 3, 0, yc[1] + ppd * 30); g.addColorStop(0, 'rgba(9,9,10,.82)'); g.addColorStop(0.45, 'rgba(9,9,10,.45)'); g.addColorStop(1, 'rgba(9,9,10,.08)'); ctx.fillStyle = g; ctx.fill(pc); }
-    ctx.lineCap = 'round'; ctx.setLineDash([0.01, 3.4]); ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(236,230,214,.42)';
-    var borde = new Path2D(); cima.forEach(function (q, j) { if (j) borde.lineTo(q[0], q[1]); else borde.moveTo(q[0], q[1]); }); ctx.stroke(borde);
-    ctx.setLineDash([]);
+    ctx.save(); ctx.clip(pc);
+    for (k = 1; k <= 18; k++) {
+      var u = Math.min(1, k / 10), dep = 0.42 * Math.pow(k, 1.5), amp = 0.25 + 0.07 * k, maestra = k % 4 === 0;
+      var ck = contorno(function (az) { return perfil(az) * (1 - u) - 3 * u - dep + amp * ondas(az, k); }, desde, hasta, 1);
+      punteado(ctx, trazo(ck), 'rgba(236,230,214,' + (maestra ? 0.36 : 0.17) + ')', maestra ? 1.6 : 1.2, (maestra ? 3 : 3.6) + k * 0.25);
+    }
+    ctx.restore();
+    punteado(ctx, trazo(cima), 'rgba(236,230,214,.5)', 1.35, 3.2);
     // las siluetas, ancladas a su rumbo
     SILUETAS.forEach(function (s) { if (Math.abs(U.difAng(E.az, s.az)) < 120) silueta(ctx, s.az, perfil(s.az) + (s.dy || 0), s.dibujo, s.escala || 1, s.luz); });
     // los puntos cardinales, sobre el suelo
@@ -413,6 +425,8 @@
     ctx.restore();
   }
   CI.silueta = silueta;
+  // para los laboratorios de suelo (lab-suelo.html): las piezas del suelo, sin tocar el de verdad
+  CI.piezasSuelo = function () { return { suelo: suelo, contorno: contorno, cerrar: cerrar, perfil: perfil, silueta: silueta, siluetas: SILUETAS, NUBES: NUBES, rotulo: rotulo, trama: trama, moverTrama: moverTrama, TINTA: TINTA }; };
 
   /* ---------- las siluetas de la cumbre ---------- */
   function roca(c, pts) { pts.forEach(function (q, k) { c[k ? 'lineTo' : 'moveTo'](q[0], q[1]); }); c.closePath(); }
